@@ -1,0 +1,186 @@
+= Bitcoin-ruby-node
+
+This is a bitcoin node based on bitcoin-ruby-blockchain[http://github.com/mhanne/bitcoin-ruby-blockchain],
+that is capable of connecting to the bitcoin network, download and store the blockchain,
+validate all the blocks and incoming transactions, and relay data to its peers.
+
+It also has a separate {Bitcoin::Node::CommandHandler CommandHandler} socket that can be
+used to query statistics, receive blockchain updates, relay transactions via the node, etc.
+
+== Installation
+
+We assume you already have a ruby 1.9 or 2.0 compatible interpreter and rubygems environment.
+
+ gem install bitcoin-ruby-node
+ bitcoin_node --help
+
+Or add it to your Gemfile and
+
+ require 'bitcoin/node'
+
+
+== Usage
+
+In the simplest case, just run the node and it will start downloading the bitcoin blockchain
+into a sqlite database in +~/.bitcoin-ruby/bitcoin/blocks.db+.
+
+ bitcoin_node
+
+You can specify options (see +--help+) or pass a config file with +--config+.
+
+Some common options you might want to use:
+
+-n --network <name>::
+  Network to use. Usually +bitcoin+.
+  Support for +namecoin+ is also quite good.
+  Use +testnet+ for development.
+
+-c --config <file>::
+  Read options from config file.
+
+--connect <ip:port>::
+  List of peers to connect to.
+
+-s --storage <backend-string>::
+  Storage backend to use. See also STORAGE.
+
+--import <blockchain dir>::
+  Import blockchain in bitcoind/qt format from given directory.
+
+--skip-validation::
+  Skip validation of received blockchain data. Can be used to speed up import/sync when
+  blockchain data is received from a trusted source.
+
+--check-blocks <count>::
+  Check consistency of the +count+ most recent blocks. Pass -1 to check all blocks.
+
+-v --verbose::
+  Display debug output.
+
+-h --help::
+  Display all available options.
+
+It will take a long time to download/store the entire blockchain at first, so be patient ;)
+
+
+== Import
+
+If you already have a local blockchain DB created by bitcoind/-qt, you can speed up the initial import by loading it directly and skipping validation:
+
+ bitcoin_node --import ~/.bitcoin/blocks --skip-validation
+
+
+== Config Files [TODO]
+
+All commands accept configuration, either via config file, or at the command line.
+
+=== Locations
+
+There are 3 default locations where configfiles are loaded from:
+
+* /etc/bitcoin-ruby.yml
+* ~/.bitcoin-ruby.yml
+* ./bitcoin-ruby.yml
+
+Files are loaded in order (if they exist) and override each others settings.
+
+To specify a different config file use the +--config+ option.
+
+=== Files
+
+Inside a config file, you can put options for the different commands, separated
+into categories.
+
+ all:
+   network: bitcoin
+   storage: sequel::postgres:/bitcoin
+   command: 127.0.0.1:1234
+ blockchain:
+   max:
+     connect: 30
+ wallet:
+   keystore: "simple::file=keys.json"
+
+Options in the +all+ category are loaded by every command, and are loaded first
+(so command-specific options will override them).
+
+Other categories are loaded by the corresponding command and may override options
+from the +all+ category (ie. +bitcoin_wallet+ loads +all+ and +wallet+).
+
+
+== Command socket
+
+The node opens a separate command socket which you can connect to and query statistics
+or get notified about new blocks/tx, etc. See below for a list of available commands.
+
+For a list of commands, see {file:COMMANDS.rdoc} or {Bitcoin::Node::CommandHandler}.
+
+
+=== CLI interface
+
+The `bitcoin_node_cli` command can be used to interface with a running node, send it commands
+and subscribe to notifications about new blocks/txs, etc.
+The easiest way is to just call `bitcoin_node_cli` in the same way you started
+`bitcoin_node`, but with extra command arguments:
+
+ bitcoin_node_cli info
+ bitcoin_node_cli -c config.yml info
+ bitcoin_node_cli monitor "block tx"
+
+
+=== CommandClient interface
+
+If you are programming in an EventMachine context, you might find the
+{Bitcoin::Node::CommandClient} convenient.
+
+=== Raw socket
+
+Of course you can also connect to the socket by any other means you like, just send
+your commands as valid JSON, like:
+
+ {"id": 0, "method": <command>, "params": <params>}
+
+and you'll receive responses in the form:
+
+ {"id": <id>, "method": <method>, "result": <result>}
+
+For example:
+
+ $ echo -e '{"id": 1, "method": "tslb", "params": {}}\0' | nc 127.0.0.1 9999
+ {"id":1,"method":"tslb","result":{"tslb":10}}
+
+
+== Documentation
+
+Always trying to improve, any help appreciated! If anything is unclear to you, let us know!
+
+Documentation is generated using yardoc:
+
+ rake doc
+
+The specs are also a good place to see how things are supposed to work.
+
+
+== Specs
+
+The specs can be run with
+
+ rake
+
+or, if you want to run a single spec
+
+ rspec spec/node/command_api_spec.rb
+
+Coverage information is automatically generated and can be found in +coverage/+ after
+the test run.
+
+
+== Contributing
+
+Any help or feedback is greatly appreciated! Just open an issue, submit a pull-request,
+or come to #bitcoin-ruby on irc.freenode.net if you want to chat.
+
+
+== License
+
+This software is licensed under the terms of the MIT license. See {file:COPYING} for details.

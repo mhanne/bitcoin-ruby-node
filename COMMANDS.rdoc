@@ -1,0 +1,138 @@
+= Commands
+
+== info
+
+Get various statistics.
+
+ bitcoin_node_cli info
+
+== config
+
+Get the currently active configuration.
+
+ bitcoin_node_cli config
+
+== connections
+
+Get currently connected peers.
+
+ bitcoin_node_cli connections
+
+== connect
+
+Connect to given peer(s).
+
+ bitcoin_node_cli connect <ip>:<port>[,<ip>:<port>]
+
+== disconnect
+
+Disconnect given peer(s).
+
+ bitcoin_node_cli disconnect <ip>:<port>[,<ip>,<port>]
+
+== getblocks
+
+Trigger the node to ask its peers for new blocks.
+
+ bitcoin_node_cli getblocks
+
+== getaddr
+
+Trigger the node to ask its peers for more peer addresses.
+
+ bitcoin_node_cli getaddr
+
+== addrs
+
+Get known peer addresses (used by bin/bitcoin_dns_seed)
+
+ bitcoin_node_cli addrs [count]
+
+== tslb
+
+Get Time Since Last Block.
+
+ bitcoin_node_cli tslb
+
+== create_tx
+
+Create a transaction, collecting outputs from given +keys+, spending to +recipients+
+with an optional +fee+.
+Keys is an array that can contain either privkeys, pubkeys or addresses.
+When a privkey is given, the corresponding inputs are signed. If not, the
+signature_hash is computed and passed along with the response.
+After creating an unsigned transaction, one just needs to sign the sig_hashes
+and send everything to #assemble_tx, to receive the complete transaction that
+can be relayed to the network.
+
+ bitcoin_node_cli create_tx 'keys=[<addr|pub|priv>, <...>]' 'recipients=[[<addr>, <amount>], ...]'
+
+== assemble_tx
+
+Assemble an unsigned transaction from the +tx+ and +sig_pubkeys+ params and return
+a valid transaction that can be relayed to the network.
+The +tx+ is the regular transaction structure, with empty input scripts
+(as returned by #create_tx when called without privkeys).
++sig_pubkeys+ is an array of [signature, pubkey] pairs used to build the input scripts.
+
+ bitcoin_node_cli assemble_tx tx=<hex> 'sig_pubkeys=[[<sig>, <pub>], ...]'
+
+== relay_tx
+
+Relay given transaction (in hex).
+
+ bitcoin_node_cli relay_tx <tx in hex>
+
+== store_block
+
+Validate and store given block (in hex) as if it was received by a peer.
+
+ bitcoin_node_cli store_block <block in hex>
+
+== store_tx
+
+Store given transaction (in hex) as if it was received by a peer.
+
+ bitcoin_node_cli store_tx <tx in hex>
+
+== stop
+
+Stop the bitcoin node.
+
+ bitcoin_node_cli stop
+
+== help
+
+List all available commands.
+
+ bitcoin_node_cli help
+
+
+== Monitors
+
+=== block
+
+Monitor new blocks that are accepted into the main chain.
+If +last+ parameter is given, it will send all blocks since then.
+
+ bitcoin_node_cli monitor channel=block
+ bitcoin_node_cli monitor channel=block last=1234
+
+=== tx
+
+Monitor new transactions.
+If +conf+ parameter is given, it will only send txs with at least that many confirmations.
+If +last+ parameter is given, it will send all txs since then.
+
+ bitcoin_node_cli monitor channel=tx
+ bitcoin_node_cli monitor channel=tx conf=1 last=b187505ce2acbafcb02948657c0cadb855fbcbf0491f12670f9ff8d271de1983
+
+=== output
+
+Monitor transaction outputs.
+If +conf+ parameter is given, it will only send outputs with at least that many confirmations.
+If +last+ parameter is given, it will send all outputs since then.
+If +addresses+ parameter is given, it will only send outputs related to those addresses.
+
+ bitcoin_node_cli monitor channel=output
+ bitcoin_node_cli monitor channel=output conf=1 last=b187505ce2acbafcb02948657c0cadb855fbcbf0491f12670f9ff8d271de1983:0
