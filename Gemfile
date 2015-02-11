@@ -7,7 +7,7 @@ gem 'bitcoin-ruby',
   # path: '../bitcoin-ruby'
 
 gem 'bitcoin-ruby-blockchain',
-  git: "git://github.com/mhanne/bitcoin-ruby-blockchain"
+  git: "git://github.com/mhanne/bitcoin-ruby-blockchain", branch: "mempool"
   # path: '../bitcoin-ruby-blockchain'
 
 gem 'bitcoin-ruby-wallet',

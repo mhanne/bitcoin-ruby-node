@@ -109,6 +109,9 @@ module Bitcoin::Node
       @node.push_notification(:connection, info.merge(type: :connected))
       @node.addrs << addr
       send_data P::Addr.pkt(@node.addr)  if @node.config[:announce]
+      # send_data Bitcoin::P.pkt("mempool", "")
+      send_getblocks
+
     end
 
     # error parsing a message, log as warning but otherwise ignore
@@ -120,11 +123,14 @@ module Bitcoin::Node
     # add to inv_queue, unlesss maximum is reached
     def on_inv_transaction(hash)
       log.debug { ">> inv transaction: #{hash.hth}" }
+
+      # TODO: get relay propagation from mempool
       if @node.relay_propagation.keys.include?(hash.hth)
         @node.relay_propagation[hash.hth] += 1
       end
-      return  if @node.inv_queue.size >= @node.config[:max][:inv]
-      @node.queue_inv([:tx, hash, self])
+
+      @node.store.mempool.inv(hash)
+      send_getdata_tx(hash)  unless @node.store.mempool.exists?(hash.hth)
     end
 
     # received +inv_block+ message for given +hash+.
@@ -170,7 +176,7 @@ module Bitcoin::Node
     # push tx to storage queue
     def on_tx(tx)
       log.debug { ">> tx: #{tx.hash} (#{tx.payload.size} bytes)" }
-      @node.queue.push([:tx, tx])
+      @node.store.mempool.add(tx)
     end
 
     # received +block+ message for given +blk+.

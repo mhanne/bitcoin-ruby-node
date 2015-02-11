@@ -108,6 +108,15 @@ class Bitcoin::Node::CommandHandler < EM::Connection
     { id: id }
   end
 
+  [:accepted, :rejected, :doublespend, :seen, :confirmed].each do |type|
+    define_method("handle_monitor_mempool_#{type}") do |request, params|
+      monitor_id = @monitors.size
+      id = @node.store.mempool.subscribe(type) do |data|
+        respond(request, data)
+      end
+    end
+  end
+
   # Handle +monitor block+ command;
   def handle_monitor_block request, params
     monitor_id = @monitors.size
@@ -127,7 +136,6 @@ class Bitcoin::Node::CommandHandler < EM::Connection
   end
 
   def respond_monitor_block request, block, height = nil
-    p :mbb
     height ||= block.height
     respond(request, { hash: block.hash, hex: block.to_payload.hth, height: height, depth: height })
   end
@@ -282,6 +290,12 @@ class Bitcoin::Node::CommandHandler < EM::Connection
         depth: @node.store.height,
         peers: (blocks.inject{|a,b| a+=b; a } / blocks.size rescue '?' ),
         sync: @node.store.in_sync?,
+      },
+      mempool: {
+        total: @node.store.mempool.transactions.count,
+        accepted: @node.store.mempool.accepted.count,
+        rejected: @node.store.mempool.rejected.count,
+        doublespends: @node.store.mempool.doublespend.count,
       },
       addrs: {
         alive: @node.addrs.select{|a| a.alive?}.size,
@@ -491,6 +505,7 @@ class Bitcoin::Node::CommandHandler < EM::Connection
                      details: validator.error })
     end
 
+    @node.store.mempool.add(tx)
     #@node.store.store_tx(tx)
     @node.relay_tx[tx.hash] = tx
     @node.relay_propagation[tx.hash] = 0
@@ -533,8 +548,10 @@ class Bitcoin::Node::CommandHandler < EM::Connection
   #  { method: "store_tx", params: { hex: <tx data in hex> } }
   def handle_store_tx params
     tx = Bitcoin::P::Tx.new(params[:hex].htb)
-    @node.queue << [:tx, tx]
-    { queued: tx.hash }
+#    @node.queue << [:tx, tx]
+#    { queued: tx.hash }
+    @node.store.mempool.add(tx, params[:skip_validation])
+    { added: tx.hash }
   end
 
   # # format node uptime

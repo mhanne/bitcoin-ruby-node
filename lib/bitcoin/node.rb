@@ -102,6 +102,12 @@ module Bitcoin::Node
       skip_validation: false,
       check_blocks: 1000,
       connection_timeout: 10,
+      mempool: {
+        db: "sqlite:/",
+        max_age: 3600,
+        log_level: :debug,
+      },
+
     }
 
     def initialize config = {}
@@ -127,7 +133,8 @@ module Bitcoin::Node
         skip_validation: @config[:skip_validation],
         index_nhash: @config[:index_nhash],
         index_p2sh_type: @config[:index_p2sh_type],
-        log_level: @config[:log][:storage]
+        log_level: @config[:log][:storage],
+        mempool: @config[:mempool],
       })
       @store.log.level = @config[:log][:storage]
       @store.check_consistency(@config[:check_blocks])
@@ -301,6 +308,10 @@ module Bitcoin::Node
           end
         end
 
+        @store.mempool.subscribe(:accepted) do |data|
+          tx = Bitcoin::P::Tx.new(data[:payload].htb)
+          push_notification :tx, [tx, 0]
+        end
       end
     end
 
@@ -440,6 +451,7 @@ module Bitcoin::Node
               exit
             end
           else
+            @store.mempool.add(obj[1])  if @store.in_sync?
             drop = @unconfirmed.size - @config[:max][:unconfirmed] + 1
             drop.times { @unconfirmed.shift }  if drop > 0
             unless @unconfirmed[obj[1].hash]
@@ -467,7 +479,9 @@ module Bitcoin::Node
       return  if @queue.size >= @config[:max][:queue]
       while inv = @inv_queue.shift
         next  if !@store.in_sync? && inv[0] == :tx && @notifiers.empty?
+        @store.mempool.inv(inv[1])  if inv[0] == :tx && @store.in_sync?
         next  if @queue.map{|i|i[1]}.map(&:hash).include?(inv[1])
+        next  if @store.in_sync? && @store.mempool.exists?(inv[1])
         inv[2].send("send_getdata_#{inv[0]}", inv[1])
       end
     end

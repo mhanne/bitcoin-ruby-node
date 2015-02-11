@@ -56,6 +56,11 @@ optparse = OptionParser.new do |opts|
     options[:storage] = storage
   end
 
+  opts.on("-m", "--mempool [DB]",
+    "Use given mempool db (default: #{options[:mempool]})") do |mempool|
+    options[:mempool][:db] = mempool
+  end
+
   opts.on("--skip-validation", "Skip validation of blocks and transactions") do
     options[:skip_validation] = true
   end

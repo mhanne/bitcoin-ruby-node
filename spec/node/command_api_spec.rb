@@ -522,10 +522,9 @@ describe 'Node Command API' do
         r1 = send "monitor", channel: "tx"
         should_receive r1, id: 0
         tx = @block.tx[0]
-        r2 = send "store_tx", hex: tx.to_payload.hth
-        should_receive r2, { "queued" => tx.hash }
-
+        r2 = send "store_tx", hex: tx.to_payload.hth, skip_validation: true
         should_receive_tx(r1, tx, 0)
+        should_receive r2, { "added" => tx.hash }
       end
 
       it "should unmonitor tx" do
@@ -537,7 +536,7 @@ describe 'Node Command API' do
 
         tx = @block.tx[0]
         r3 = send "store_tx", hex: tx.to_payload.hth
-        should_receive r3, { "queued" => tx.hash }
+        should_receive r3, { "added" => tx.hash }
 
         test_command("tslb") {|r| (0..TSLB_TIMEOUT).include?(r['tslb']).should == true }
       end
@@ -610,9 +609,9 @@ describe 'Node Command API' do
         r1 = send "monitor", channel: "output"
         should_receive r1, id: 0
         tx = @block.tx[0]
-        r2 = send "store_tx", hex: tx.to_payload.hth
-        should_receive r2, { "queued" => tx.hash }
+        r2 = send "store_tx", hex: tx.to_payload.hth, skip_validation: true
         should_receive_output(r1, tx, 0, 0)
+        should_receive r2, { "added" => tx.hash }
       end
 
       it "should unmonitor outputs" do
@@ -621,7 +620,7 @@ describe 'Node Command API' do
 
         tx = @block.tx[0]
         r2 = send "store_tx", hex: tx.to_payload.hth
-        should_receive r2, { "queued" => tx.hash }
+        should_receive r2, { "added" => tx.hash }
 
         test_command("tslb") {|r| (0..TSLB_TIMEOUT).include?(r['tslb']).should == true }
       end
