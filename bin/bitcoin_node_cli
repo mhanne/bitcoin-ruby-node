@@ -1,13 +1,13 @@
 #!/usr/bin/env ruby
 $:.unshift( File.expand_path("../../lib", __FILE__) )
 
-require 'bitcoin'
+require 'bitcoin/node'
 require 'optparse'
 require 'fileutils'
-Bitcoin.require_dependency :eventmachine
-Bitcoin.require_dependency :json
+require 'eventmachine'
+require 'json'
 
-defaults = Bitcoin::Network::Node::DEFAULT_CONFIG
+defaults = Bitcoin::Node::Node::DEFAULT_CONFIG
 
 options = Bitcoin::Config.load(defaults, :blockchain)
 
@@ -42,7 +42,7 @@ Bitcoin.network = options[:network]
 FileUtils.mkdir_p File.join(ENV['HOME'], ".bitcoin-ruby/#{Bitcoin.network_name}")
                   
 EM.run do
-  Bitcoin::Network::CommandClient.connect(*options[:command]) do
+  Bitcoin::Node::CommandClient.connect(*options[:command]) do
     on_response do |cmd, data|
       unless cmd == "monitor"
         puts JSON.pretty_generate data
