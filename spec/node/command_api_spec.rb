@@ -62,6 +62,8 @@ describe 'Node Command API' do
       context: [:prev_hash, :coinbase_value, :min_timestamp, :transactions_context]
     })
 
+    FileUtils.rm_f(File.join(ENV['HOME'], ".bitcoin-ruby/regtest/peers.json"))
+
     Bitcoin.network = :regtest
 
     @genesis = P::Block.new("0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4adae5494dffff001d1aa4ae180101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff4d04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73ffffffff0100f2052a01000000434104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac00000000".htb)
@@ -111,7 +113,7 @@ describe 'Node Command API' do
   it "should query info" do
     info = test_command "info"
     info.is_a?(Hash).should == true
-    info["blocks"].should == { "depth" => 0, "peers" => "?", "sync" => false }
+    info["blocks"].should == { "height" => 0, "depth" => 0, "peers" => "?", "sync" => false }
     info["addrs"].should == { "alive" => 0, "total" => 0 }
     info["connections"].should == {
       "established" => 0, "outgoing" => 0, "incoming" => 0, "connecting" => 0 }
@@ -145,10 +147,11 @@ describe 'Node Command API' do
   end
 
   it "should store block" do
-    test_command("info")["blocks"].should == {"depth" => 0, "peers" => "?", "sync" => false}
+    test_command("info")["blocks"].should == {"height" => 0, "depth" => 0, "peers" => "?", "sync" => false}
     res = test_command("store_block", { hex: @block.to_payload.hth })
     res.should == { "queued" => @block.hash }
     sleep 0.1
+    test_command("info")["blocks"]["height"].should == 1
     test_command("info")["blocks"]["depth"].should == 1
     test_command("info")["blocks"]["sync"].should == true
   end
@@ -321,8 +324,8 @@ describe 'Node Command API' do
         end
       end
 
-      def should_receive_block request, block, depth, client = @client
-        expected = { hash: block.hash, hex: block.to_payload.hth, depth: depth }
+      def should_receive_block request, block, height, client = @client
+        expected = { hash: block.hash, hex: block.to_payload.hth, height: height, depth: height }
         should_receive(request, expected, client)
       end
 
@@ -485,15 +488,15 @@ describe 'Node Command API' do
       it "should receive block notifications on reorg" do
         r = send "monitor", channel: "block"
         should_receive r, id: 1
-        should_receive r, { hash: @block.hash, hex: @block.payload.hth, depth: 1 }
+        should_receive r, { hash: @block.hash, hex: @block.payload.hth, height: 1, depth: 1 }
 
         # extend main chain by two blocks
         @block2a = create_block @block.hash, false
         store_block @block2a
-        should_receive r, { hash: @block2a.hash, hex: @block2a.payload.hth, depth: 2 }
+        should_receive r, { hash: @block2a.hash, hex: @block2a.payload.hth, height: 2, depth: 2 }
         @block3a = create_block @block2a.hash, false
         store_block @block3a
-        should_receive r, { hash: @block3a.hash, hex: @block3a.payload.hth, depth: 3 }
+        should_receive r, { hash: @block3a.hash, hex: @block3a.payload.hth, height: 3, depth: 3 }
 
         # create two side-chain blocks
         @block2b = create_block @block.hash, false
@@ -506,8 +509,8 @@ describe 'Node Command API' do
         store_block @block4b
         should_receive @request, { new_main: [ @block2b.hash, @block3b.hash ],
                                    new_side: [ @block2a.hash, @block3a.hash ] }
-        should_receive r, { hash: @block2b.hash, hex: @block2b.payload.hth, depth: 2 }
-        should_receive r, { hash: @block3b.hash, hex: @block3b.payload.hth, depth: 3 }
+        should_receive r, { hash: @block2b.hash, hex: @block2b.payload.hth, height: 2, depth: 2 }
+        should_receive r, { hash: @block3b.hash, hex: @block3b.payload.hth, height: 3, depth: 3 }
       end
 
     end

@@ -271,7 +271,7 @@ module Bitcoin::Node
           self.stop
         end
 
-        subscribe(:block) do |blk, depth|
+        subscribe(:block) do |blk, height|
           next  unless @store.in_sync?
           @log.debug { "Relaying block #{blk.hash}" }
           @connections.each do |conn|
@@ -280,10 +280,10 @@ module Bitcoin::Node
           end
         end
 
-        @store.subscribe(:block) do |blk, depth, chain|
+        @store.subscribe(:block) do |blk, height, chain|
           if chain == 0 && blk.hash == @store.get_head.hash
             @last_block_time = Time.now
-            push_notification(:block, [blk, depth])
+            push_notification(:block, [blk, height])
             blk.tx.each {|tx| @unconfirmed.delete(tx.hash) }
           end
           getblocks  if chain == 2 && @store.in_sync?
@@ -296,7 +296,7 @@ module Bitcoin::Node
           push_notification(:reorg, [new_main, new_side])
           new_main.each do |hash|
             blk = @store.get_block(hash)
-            push_notification(:block, [blk, blk.depth, 0])
+            push_notification(:block, [blk, blk.height, 0])
           end
         end
 

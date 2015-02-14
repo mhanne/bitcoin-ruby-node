@@ -10,11 +10,12 @@ rescue LoadError
 end
 
 RSpec.configure do |config|
+  config.fail_fast = true
   config.expect_with(:rspec) {|c| c.syntax = [:should, :expect] }
 end
 
 require 'pry-byebug'
-#require 'bitcoin-ruby-blockchain'
+require 'bitcoin/blockchain'
 require 'bitcoin/node'
 
 begin

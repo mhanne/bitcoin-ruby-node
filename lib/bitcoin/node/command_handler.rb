@@ -111,7 +111,7 @@ class Bitcoin::Node::CommandHandler < EM::Connection
   # Handle +monitor block+ command;
   def handle_monitor_block request, params
     monitor_id = @monitors.size
-    id = @node.subscribe(:block) {|blk, depth| respond_monitor_block(request, blk, depth) }
+    id = @node.subscribe(:block) {|blk, height| respond_monitor_block(request, blk, height) }
     add_monitor(params, [[:block, id]])
     respond_missed_blocks(request, monitor_id)  if params[:last]
     monitor_id
@@ -119,19 +119,20 @@ class Bitcoin::Node::CommandHandler < EM::Connection
 
   def respond_missed_blocks request, monitor_id
     params = @monitors[monitor_id][:params]
-    blk = @node.store.get_block(params[:last])
+    blk = @node.store.block(params[:last])
     respond_monitor_block(request, blk)
-    while blk = blk.get_next_block
+    while blk = blk.next_block
       respond_monitor_block(request, blk)
     end
   end
 
-  def respond_monitor_block request, block, depth = nil
-    depth ||= block.depth
-    respond(request, { hash: block.hash, hex: block.to_payload.hth, depth: depth })
+  def respond_monitor_block request, block, height = nil
+    p :mbb
+    height ||= block.height
+    respond(request, { hash: block.hash, hex: block.to_payload.hth, height: height, depth: height })
   end
 
-  # TODO: params (min reorg depth)
+  # TODO: params (min reorg height)
   def handle_monitor_reorg request, params
     id = @node.subscribe(:reorg) do |new_main, new_side|
       respond(request, { new_main: new_main, new_side: new_side })
@@ -149,8 +150,8 @@ class Bitcoin::Node::CommandHandler < EM::Connection
     tx_id = @node.subscribe(:tx) {|tx, conf| respond_monitor_tx(request, monitor_id, tx, conf) }
 
     conf = params[:conf].to_i
-    block_id = @node.subscribe(:block) do |block, depth|
-      next  unless block = @node.store.get_block_by_depth(depth - conf + 1)
+    block_id = @node.subscribe(:block) do |block, height|
+      next  unless block = @node.store.block_at_height(height - conf + 1)
       block.tx.each {|tx| respond_monitor_tx(request, monitor_id, tx, conf) }
     end
 
@@ -162,12 +163,12 @@ class Bitcoin::Node::CommandHandler < EM::Connection
   end
 
   def respond_missed_txs request, params, monitor_id
-    return  unless last_tx = @node.store.get_tx(params[:last])
-    notify = false; depth = @node.store.get_depth
-    (last_tx.get_block.depth..depth).each do |i|
-      blk = @node.store.get_block_by_depth(i)
+    return  unless last_tx = @node.store.tx(params[:last])
+    notify = false; height = @node.store.height
+    (last_tx.block.height..height).each do |i|
+      blk = @node.store.block_at_height(i)
       blk.tx.each do |tx|
-        respond_monitor_tx(request, monitor_id, tx, (depth - blk.depth + 1))  if notify
+        respond_monitor_tx(request, monitor_id, tx, (height - blk.height + 1))  if notify
         notify = true  if tx.hash == last_tx.hash
       end
     end
@@ -202,8 +203,8 @@ class Bitcoin::Node::CommandHandler < EM::Connection
     end
 
     if (conf = params[:conf].to_i) > 0
-      block_id = @node.subscribe(:block) do |block, depth|
-        block = @node.store.get_block_by_depth(depth - conf + 1)
+      block_id = @node.subscribe(:block) do |block, height|
+        block = @node.store.block_at_height(height - conf + 1)
         next  unless block
         block.tx.each do |tx|
           tx.out.each.with_index do |out, idx|
@@ -223,16 +224,16 @@ class Bitcoin::Node::CommandHandler < EM::Connection
   def respond_missed_outputs request, monitor_id
     params = @monitors[monitor_id][:params]
     last_hash, last_idx = *params[:last].split(":"); last_idx = last_idx.to_i
-    return  unless last_tx = @node.store.get_tx(last_hash)
+    return  unless last_tx = @node.store.tx(last_hash)
     return  unless last_out = last_tx.out[last_idx]
     notify = false
-    depth = @node.store.get_depth
-    (last_tx.get_block.depth..depth).each do |i|
-      blk = @node.store.get_block_by_depth(i)
+    height = @node.store.height
+    (last_tx.block.height..height).each do |i|
+      blk = @node.store.block_at_height(i)
       blk.tx.each do |tx|
         tx.out.each.with_index do |out, idx|
           if notify
-            respond_monitor_output(request, monitor_id, tx, out, idx, (depth - blk.depth + 1))
+            respond_monitor_output(request, monitor_id, tx, out, idx, (height - blk.height + 1))
           else
             notify = true  if tx.hash == last_hash && idx == last_idx
           end
@@ -277,7 +278,8 @@ class Bitcoin::Node::CommandHandler < EM::Connection
     established = @node.connections.select {|c| c.state == :connected }
     info = {
       blocks: {
-        depth: @node.store.get_depth,
+        height: @node.store.height,
+        depth: @node.store.height,
         peers: (blocks.inject{|a,b| a+=b; a } / blocks.size rescue '?' ),
         sync: @node.store.in_sync?,
       },
