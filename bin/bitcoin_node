@@ -126,6 +126,10 @@ optparse = OptionParser.new do |opts|
     end
   end
 
+  opts.on("--die-on-orphan", "Terminate the node when an orphan block is received") do |d|
+    options[:die_on_orphan] = d
+  end
+
   opts.on("--import DIR", "Import blk*.dat files from DIR") do |dir|
     options[:import] = dir
   end

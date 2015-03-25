@@ -75,6 +75,7 @@ module Bitcoin::Node
       epoll_limit: 10000,
       epoll_user: nil,
       addr_file: "~/.bitcoin-ruby/<network>/peers.json",
+      die_on_orphan: false,
       log: {
         network: :info,
         storage: :info,
@@ -433,7 +434,11 @@ module Bitcoin::Node
       while obj = @queue.shift
         begin
           if obj[0].to_sym == :block
-            @store.new_block(obj[1])
+            height, chain = @store.new_block(obj[1])
+            if @config[:die_on_orphan] && chain == 2
+              puts "Orphan block received, terminating."
+              exit
+            end
           else
             drop = @unconfirmed.size - @config[:max][:unconfirmed] + 1
             drop.times { @unconfirmed.shift }  if drop > 0
