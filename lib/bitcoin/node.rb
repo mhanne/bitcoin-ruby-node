@@ -404,7 +404,7 @@ module Bitcoin::Node
     # from a random peer if it isn't
     def work_addrs
       log.debug { "addr worker running" }
-      @addrs.delete_if{|addr| !addr.alive? }  if @addrs.size >= @config[:max][:addr]
+      @addrs.delete_if{|addr| !addr || !addr.alive? }  if @addrs.size >= @config[:max][:addr]
       return  if !@connections.any? || @config[:max][:connections] <= @connections.size
       connections = @connections.select(&:connected?)
       return  unless connections.any?
