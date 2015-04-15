@@ -14,7 +14,7 @@ RSpec.configure do |config|
   config.expect_with(:rspec) {|c| c.syntax = [:should, :expect] }
 end
 
-require 'pry-byebug'
+require 'pry'
 require 'bitcoin/blockchain'
 require 'bitcoin/node'
 

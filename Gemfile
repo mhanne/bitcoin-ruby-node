@@ -21,10 +21,13 @@ gem 'sqlite3'
 gem 'pg'
 gem 'mysql'
 
+gem 'em-dns'
+gem 'log4r'
+
 group :development do
   gem 'rake'
-  gem 'rspec'
   gem 'yard'
-  gem 'pry-byebug'
   gem 'minitest'
+  gem 'rspec'
+  gem 'pry'
 end
