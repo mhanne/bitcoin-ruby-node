@@ -111,6 +111,11 @@ module Bitcoin::Node
       send_data P::Addr.pkt(@node.addr)  if @node.config[:announce]
     end
 
+    # error parsing a message, log as warning but otherwise ignore
+    def on_error(type, data)
+      log.warn { "error: #{type} (#{data})" }
+    end
+
     # received +inv_tx+ message for given +hash+.
     # add to inv_queue, unlesss maximum is reached
     def on_inv_transaction(hash)
