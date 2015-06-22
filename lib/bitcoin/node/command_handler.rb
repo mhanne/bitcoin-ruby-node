@@ -319,6 +319,17 @@ class Bitcoin::Node::CommandHandler < EM::Connection
     Bitcoin.namecoin? ? {names: @node.store.db[:names].count}.merge(info) : info
   end
 
+  def handle_mempool_stats
+    mempool = @node.store.mempool
+    {
+      total: mempool.transactions.count,
+      accepted: mempool.accepted.count,
+      rejected: mempool.rejected.count,
+      doublespend: mempool.doublespend.count,
+      oldest: (Time.now - mempool.transactions.order(:created_at).first[:created_at]).to_i
+    }
+  end
+
   def add_monitor params, channels
     @monitors << { params: params, channels: channels }
     @monitors.size - 1
