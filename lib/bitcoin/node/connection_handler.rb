@@ -129,8 +129,8 @@ module Bitcoin::Node
         @node.relay_propagation[hash.hth] += 1
       end
 
-      @node.store.mempool.inv(hash)
-      send_getdata_tx(hash)  unless @node.store.mempool.exists?(hash.hth)
+      return  if @node.inv_queue.size >= @node.config[:max][:inv]
+      @node.queue_inv([:tx, hash, self])
     end
 
     # received +inv_block+ message for given +hash+.
@@ -176,7 +176,7 @@ module Bitcoin::Node
     # push tx to storage queue
     def on_tx(tx)
       log.debug { ">> tx: #{tx.hash} (#{tx.payload.size} bytes)" }
-      @node.store.mempool.add(tx)
+      @node.queue.push([:tx, tx])
     end
 
     # received +block+ message for given +blk+.
