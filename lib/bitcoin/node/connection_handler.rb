@@ -113,7 +113,7 @@ module Bitcoin::Node
 
     # error parsing a message, log as warning but otherwise ignore
     def on_error(type, data)
-      log.warn { "error: #{type} (#{data})" }
+      log.warn { "error: #{type} (#{data.hth})" }
     end
 
     # received +inv_tx+ message for given +hash+.
