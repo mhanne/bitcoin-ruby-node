@@ -216,8 +216,11 @@ module Bitcoin::Node
     end
 
     # received +getblocks+ message.
+    # finds the next n blocks and either sends "inv block" messages, or,
+    # in case +headers_only+ is set (i.e. being called from #on_getheaders),
+    # a "headers" message.
     # TODO: locator fallback
-    def on_getblocks(version, hashes, stop_hash)
+    def on_getblocks(version, hashes, stop_hash, headers_only = false)
       # remember the last few received getblocks messages and ignore duplicate ones
       # fixes unexplained issue where remote node is bombarding us with the same getblocks
       # message over and over (probably related to missing locator fallback handling)
@@ -225,14 +228,45 @@ module Bitcoin::Node
       @last_getblocks << [version, hashes, stop_hash]
       @last_getblocks.shift  if @last_getblocks.size > 3
 
+      # find last block / height our peer our peer has
       blk = @node.store.db[:blk][hash: hashes[0].htb.blob]
       height = blk[:height]  if blk
-      log.info { ">> getblocks #{hashes[0]} (#{height || 'unknown'})" }
 
+      log.info { ">> get#{headers_only ? "headers" : "blocks"} #{hashes[0]} (#{height || 'unknown'})" }
       return  unless height && height <= @node.store.height
-      range = (height+1..height+500)
-      blocks = @node.store.db[:blk].where(chain: 0, height: range).order(:height).select(:hash).all
-      send_inv(:block, *blocks.map {|b| b[:hash].hth })
+
+      # fetch next n blocks from storage (500 for 'getblocks', 2000 for 'getheaders')
+      n_blocks = headers_only ? 2000 : 500
+      range = (height+1..height+n_blocks)
+      blocks = @node.store.db[:blk].where(chain: 0, height: range).order(:height)
+
+      # in case of 'getheaders', we need the whole block header, otherwise just the hash
+      blocks.select(:hash)  unless headers_only
+
+      if headers_only
+        # encode block headers and send them as "headers" message
+        headers = blocks.map do |b|
+          # encode regular header info
+          h = [ b[:version], b[:prev_hash].reverse,
+                b[:mrkl_root].reverse, b[:time], b[:bits], b[:nonce]
+              ].pack("Va32a32VVV")
+          # add auxiliary proof of work for merge mined (i.e. namecoin) blockchains
+          h += b[:aux_pow]  if Bitcoin.network_project == :namecoin && b[:aux_pow]
+          # add number of transactions = 0
+          h += P.pack_var_int(0)
+        end
+        send_data Protocol.pkt("headers", P.pack_var_int(headers.count) + headers.join)
+      else
+        # send "inv block" message for each block hash
+        send_inv(:block, *blocks.map {|b| b[:hash].hth })
+      end
+    end
+
+    # received +getheaders+ message.
+    # same as +getblocks+ but sends a list of headers instead
+    # of inv block messages.
+    def on_getheaders(version, hashes, stop_hash)
+      on_getblocks(version, hashes, stop_hash, :headers_only)
     end
 
     # received +getaddr+ message.
