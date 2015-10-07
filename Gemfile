@@ -14,6 +14,10 @@ gem 'bitcoin-ruby-wallet',
   git: "git://github.com/mhanne/bitcoin-ruby-wallet"
   # path: '../bitcoin-ruby-wallet'
 
+gem 'bitcoin-ruby-config',
+  git: "git://github.com/mhanne/bitcoin-ruby-config"
+  # path: "../bitcoin-ruby-config"
+
 gem 'eventmachine'
 
 gem 'sequel'

@@ -2,12 +2,15 @@
 $:.unshift( File.expand_path("../../lib", __FILE__) )
 
 require 'bitcoin/node'
+require 'bitcoin/config'
 require 'optparse'
 require 'fileutils'
 
+CONFIG_PATHS = "./bitcoin-ruby.yml:~/.bitcoin-ruby.yml:/etc/bitcoin-ruby.yml"
+
 defaults = Bitcoin::Node::Node::DEFAULT_CONFIG
 
-options = Bitcoin::Config.load(defaults, :blockchain)
+options = Bitcoin::Config.load(defaults, :blockchain, CONFIG_PATHS)
 
 optparse = OptionParser.new do |opts|
   opts.banner = "Usage: bitcoin_node [options]"
@@ -15,7 +18,7 @@ optparse = OptionParser.new do |opts|
   opts.separator("\nAvailable options:\n")
 
   opts.on("-c", "--config FILE",
-    "Config file (default: #{Bitcoin::Config::CONFIG_PATHS})") do |file|
+    "Config file (default: #{CONFIG_PATHS})") do |file|
     options = Bitcoin::Config.load_file(options, file, :blockchain)
   end
 
