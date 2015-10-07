@@ -474,9 +474,10 @@ class Bitcoin::Node::CommandHandler < EM::Connection
   def handle_relay_tx request, params = {}
     params[:send] ||= 3
     params[:wait] ||= 3
-    # request, hex, send = 3, wait = 3
+
     begin
-      tx = Bitcoin::P::Tx.new(params[:hex].htb)
+      tx = Bitcoin::P::Tx.new
+      raise  unless tx.parse_data_from_io(params[:hex].htb)
     rescue
       return respond(request, { error: "Error decoding transaction." })
     end
