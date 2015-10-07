@@ -338,19 +338,17 @@ module Bitcoin::Node
     # get peer addrs from given dns +seed+ using em/dns_resolver.
     # fallback to using `nslookup` if it is not installed or fails.
     def connect_dns_resolver(seed)
-      if Bitcoin.require_dependency "em/dns_resolver", gem: "em-dns", exit: false
-        log.info { "Querying addresses from DNS seed: #{seed}" }
-
-        dns = EM::DnsResolver.resolve(seed)
-        dns.callback {|addrs| yield(addrs) }
-        dns.errback do |*a|
-          log.error { "Cannot resolve DNS seed #{seed}: #{a.inspect}" }
-          connect_dns_nslookup(Bitcoin.network[:dns_seeds].sample) {|a| yield(a) }
-        end
-      else
-        log.info { "Falling back to nslookup resolver." }
-        connect_dns_nslookup(seed) {|a| yield(a) }
+      require "em/dns_resolver"
+      log.info { "Querying addresses from DNS seed: #{seed}" }
+      dns = EM::DnsResolver.resolve(seed)
+      dns.callback {|addrs| yield(addrs) }
+      dns.errback do |*a|
+        log.error { "Cannot resolve DNS seed #{seed}: #{a.inspect}" }
+        connect_dns_nslookup(Bitcoin.network[:dns_seeds].sample) {|a| yield(a) }
       end
+    rescue LoadError
+      log.info { "Falling back to nslookup resolver." }
+      connect_dns_nslookup(seed) {|a| yield(a) }
     end
 
     # get peers from dns via nslookup
