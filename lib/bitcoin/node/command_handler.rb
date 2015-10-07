@@ -500,7 +500,7 @@ class Bitcoin::Node::CommandHandler < EM::Connection
     EM.add_timer(params[:wait]) do
       received = @node.relay_propagation[tx.hash]
       total = @node.connections.select(&:connected?).size - params[:send]
-      percent = 100.0 / total * received
+      percent = total == 0 ? 0.0 : 100.0 / total * received
       respond(request, { success: true, hash: tx.hash, propagation: {
             received: received, sent: 1, percent: percent } })
     end
