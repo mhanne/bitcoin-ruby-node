@@ -433,6 +433,19 @@ module Bitcoin::Node
         begin
           if obj[0].to_sym == :block
             height, chain = @store.new_block(obj[1])
+
+            if chain == 1 && @queue.size == 1
+              # skip to the end of this side chain
+              block = b = @store.db[:blk][hash: obj[1].hash.htb.blob]
+              while b = @store.db[:blk][prev_hash: b[:hash]]
+                block = b
+                # print "\rskipping to end of side-chain (#{b[:height]})"
+              end
+
+              # send locator to fetch blocks extending this side chain
+              getblocks(@store.locator(@store.block(block[:hash].hth)))
+            end
+
             if @config[:die_on_orphan] && chain == 2
               puts "Orphan block received, terminating."
               exit
